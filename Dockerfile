@@ -27,6 +27,8 @@
 ARG TOMCAT_VERSION=9
 ARG TOMCAT_JRE=jdk21
 
+
+
 # Use official maven image for the build
 FROM maven:3-eclipse-temurin-21 AS builder
 
@@ -37,12 +39,6 @@ RUN    apt-get update                                \
     && apt-get upgrade -y                            \
     && apt-get install -y software-properties-common \
     && add-apt-repository -y ppa:mozillateam/ppa
-
-# Explicitly prefer packages from the Firefox PPA
-# COPY guacamole-docker/mozilla-firefox.pref /etc/apt/preferences.d/
-
-# Install firefox browser for sake of JavaScript unit tests
-# RUN apt-get update && apt-get install -y firefox
 
 # Arbitrary arguments that can be passed to the maven build. By default, an
 # argument will be provided to explicitly unskip any skipped tests. To, for
@@ -59,45 +55,24 @@ ARG PGSQL_JDBC_VERSION=42.7.2
 ENV \
     BUILD_DIR=/tmp/guacamole-docker-BUILD
 
-# Add configuration scripts
-# COPY guacamole-docker/bin/ /opt/guacamole/bin/
-# COPY guacamole-docker/build.d/ /opt/guacamole/build.d/
-# COPY guacamole-docker/entrypoint.d/ /opt/guacamole/entrypoint.d/
-# COPY guacamole-docker/environment/ /opt/guacamole/environment/
-
 # Copy source to container for sake of build
-# COPY . "$BUILD_DIR"
-RUN git clone https://github.com/apache/guacamole-client ${BUILD_DIR}
-
-
-# Add configuration scripts
-RUN ls -l ${BUILD_DIR}
-RUN cp ${BUILD_DIR}/guacamole-client/guacamole-docker/bin/ /opt/guacamole/bin/
-RUN cp ${BUILD_DIR}/guacamole-client/guacamole-docker/build.d/ /opt/guacamole/build.d/
-RUN cp ${BUILD_DIR}/guacamole-client/guacamole-docker/entrypoint.d/ /opt/guacamole/entrypoint.d/
-RUN cp ${BUILD_DIR}/guacamole-client/guacamole-docker/environment/ /opt/guacamole/environment/
-
-
 # Explicitly prefer packages from the Firefox PPA
-RUN cp ${BUILD_DIR}/guacamole-docker/mozilla-firefox.pref /etc/apt/preferences.d/
+# Add configuration scripts
+RUN git clone https://github.com/apache/guacamole-client $BUILD_DIR \
+    && mkdir -p /opt/guacamole/bin                                  \
+    && mv $BUILD_DIR/guacamole-docker/bin          /opt/guacamole/  \
+    && mv $BUILD_DIR/guacamole-docker/build.d      /opt/guacamole/  \
+    && mv $BUILD_DIR/guacamole-docker/entrypoint.d /opt/guacamole/  \
+    && mv $BUILD_DIR/guacamole-docker/environment  /opt/guacamole/  \
+    && mv $BUILD_DIR/guacamole-docker/mozilla-firefox.pref /etc/apt/preferences.d/
 
 # Install firefox browser for sake of JavaScript unit tests
 RUN apt-get update && apt-get install -y firefox
-
-
-
-
-
 
 # Run the build itself
 RUN /opt/guacamole/bin/build-guacamole.sh "$BUILD_DIR" /opt/guacamole
 
 RUN rm -rf /opt/guacamole/build.d /opt/guacamole/bin/build-guacamole.sh
-
-
-
-
-
 
 
 
@@ -116,11 +91,9 @@ RUN apt-get update -qq \
 RUN apt-get update -qq \
     && apt-get install -y fuse \
     && rm -rf /var/lib/apt/lists/*
-
 ARG TARGETARCH
-RUN case ${TARGETARCH} in arm|arm/v7) ARCH="armhf" ;; arm/v6) ARCH="arm" ;; arm64|arm/v8) ARCH="aarch64" ;; 386) ARCH="x86" ;; amd64) ARCH="x86_64" ;; esac && \
+RUN case ${TARGETARCH} in arm|arm/v7) ARCH="armhf" ;; arm/v6) ARCH="arm" ;; arm64|arm/v8) ARCH="arm64" ;; 386) ARCH="x86" ;; amd64) ARCH="x86_64" ;; esac && \
         wget https://s3.amazonaws.com/mountpoint-s3-release/latest/${ARCH}/mount-s3.deb
-# RUN wget https://s3.amazonaws.com/mountpoint-s3-release/latest/$TARGETARCH/mount-s3.deb
 RUN apt-get install -y ./mount-s3.deb
 
 
@@ -144,6 +117,8 @@ ENV BAN_ENABLED=true \
     ENABLE_FILE_ENVIRONMENT_PROPERTIES=true \
     GUACAMOLE_HOME=/etc/guacamole
 
+ENV MOUNT_S3_PARAMETERS="guacamole-logs-s3 /record"    
+
 # Start Guacamole under Tomcat, listening on 0.0.0.0:8080
 EXPOSE 8080
-CMD ["/opt/guacamole/bin/entrypoint.sh" ]
+CMD [ "mount-s3 $MOUNT_S3_PARAMETERS ; /opt/guacamole/bin/entrypoint.sh" ]
