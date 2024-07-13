@@ -20,4 +20,4 @@ jobs:
         with:
           context: ./
           push: true
-          tags: gknepper/guacamole-client-s3:latest
+          tags: gabrielkm/guacamole-client-s3:latest
