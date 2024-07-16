@@ -96,6 +96,10 @@ RUN case ${TARGETARCH} in arm|arm/v7) ARCH="armhf" ;; arm/v6) ARCH="arm" ;; arm6
         wget https://s3.amazonaws.com/mountpoint-s3-release/latest/${ARCH}/mount-s3.deb
 RUN apt-get install -y ./mount-s3.deb
 RUN mkdir -p /record
+RUN chown 1001 /record
+RUN chgrp 1001 /record
+COPY 998-start-mounts3.sh /opt/guacamole/entrypoint.d
+
 
 # This is where the build artifacts go in the runtime image
 WORKDIR /opt/guacamole
@@ -117,8 +121,6 @@ ENV BAN_ENABLED=true \
     ENABLE_FILE_ENVIRONMENT_PROPERTIES=true \
     GUACAMOLE_HOME=/etc/guacamole
 
-ENV MOUNT_S3_PARAMETERS="guacamole-logs-s3 /record"    
-
 # Start Guacamole under Tomcat, listening on 0.0.0.0:8080
 EXPOSE 8080
-CMD [ "mount-s3 $MOUNT_S3_PARAMETERS && /opt/guacamole/bin/entrypoint.sh" ]
+CMD [ "/opt/guacamole/bin/entrypoint.sh" ]

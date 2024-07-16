@@ -5,7 +5,7 @@ All the changes were made on Dockerfile only. The code base is guacamole-server 
 
 ## Build
 
-`docker build build ./ -t guacamole/guacamole-s3:1.5.5 -f Dockerfile --platform linux/amd64`
+`docker build build ./ -t guacamole/guacamole-s3:latest -f Dockerfile --platform linux/amd64`
 
 
 ## Use
